@@ -1,0 +1,229 @@
+---
+title: "Untitled"
+author: "student"
+date: "2024-01-11"
+output:
+  word_document: default
+  html_document: default
+---
+```{r}
+library(dplyr)
+library(reshape)
+library(corrplot)
+library(gridExtra)
+library(tidyr)
+library(ggplot2)
+```
+
+
+
+```{r}
+math=read.csv("student-mat.csv", stringsAsFactors=T,sep=";",header=TRUE)
+portuguese=read.csv("student-por.csv", stringsAsFactors=T,sep=";",header=TRUE)
+#students that study both modules
+math_port=merge(math,portuguese,by=c("school","sex","age","address","famsize","Pstatus","Medu","Fedu","Mjob","Fjob","reason","nursery","internet"))
+print(nrow(math_port)) # 382 students
+```
+
+cleaning: 
+```{r}
+math$average=round(apply(select(math, G1, G2, G3), 1, mean), 2)
+portuguese$average=round(apply(select(portuguese, G1, G2, G3), 1, mean), 2)
+math$subject=rep("Math", nrow(math))
+portuguese$subject=rep("Portugese", nrow(portuguese))
+```
+
+```{r}
+data=rbind(math, portuguese)
+
+data$support <- "0"
+data[data$schoolsup=="yes"& data$famsup=="yes",]$support<- "both"
+data[data$schoolsup=="yes"& data$famsup!="yes",]$support<- "school"
+data[data$schoolsup!="yes"& data$famsup=="yes",]$support<- "family"
+data[data$schoolsup!="yes"& data$famsup!="yes",]$support<- "none"
+data$support <- as.factor(data$support)
+data <- select(data, -c("schoolsup","famsup"))
+
+str(data)
+```
+```{r}
+summary(data)
+```
+note: there is 382 STUDENT WHO STUDY MATH AND Portuguese which means data have 1044-382= 662 student in total
+```{r}
+categorical_var=c("school","sex","address","famsize","Pstatus","Mjob","Fjob","reason","guardian","paid","activities","nursery","higher","internet","romantic","subject","support")
+numeric_var=c("Medu","Fedu","age","traveltime","studytime","failures","famrel","freetime","goout","Dalc","Walc","health","absences","G1","G2","G3","average")
+```
+
+students from schools: 
+
+why they choosed the school: 
+```{r}
+d=ggplot(data, aes(x = school, fill = reason)) +
+    geom_bar(position = 'dodge') +
+    labs(title = 'plot 4:reason of choosing this school', x = 'School', y = 'Count') +
+    theme_minimal()
+b=ggplot(data, aes(x = reason)) +
+    geom_bar(position = 'dodge') +
+    labs(title = 'plot 2: reason of choosing this school', x = 'reasons', y = 'Count') +
+    theme_minimal()
+c=ggplot(data, aes(x = school, fill = address)) +
+    geom_bar(position = 'dodge') +
+    labs(title = 'plot 2: location', x = 'School', y = 'Count') +
+    theme_minimal()
+a=ggplot(data, aes(x = school, fill = subject)) +
+    geom_bar(position = 'dodge') +
+    labs(title = 'plot 1: students in schools/subjects', x = 'School', y = 'Count') +
+    theme_minimal()
+grid.arrange(a,b,c,d,ncol=2)
+```
+```{r}
+plot_list=list()
+variables=c("reason", "address", "subject")
+for (var in variables) {
+  plot=ggplot(data, aes_string(x = school, fill = var)) +
+    geom_bar(position = 'dodge') +
+    labs(title = paste("Plot:", var, "vs grade"), x = var)
+  plot_list[[length(plot_list) + 1]] <- plot
+}
+scatter_plot=ggplot(grades, aes(x = absences, y = average)) +
+  geom_point() +
+  labs(title = 'Absence vs Grade', x = 'Absences')
+plot_list[[length(plot_list) + 1]]=scatter_plot
+grid.arrange(grobs = plot_list, ncol = 2)
+```
+
+
+the most effective reason for choosing the school is because of cource preferences and close to home, and it seems like GP school have better cources and reputation in contrast with MS and it's the closes to majority of students. so GP is close to U and MS close to R, students who live in U are much more than who live in R. That's why GP have more number of student's. 
+
+
+does family affect student performance?
+
+
+```{r}
+grades= data
+good = data[((data$average>=15) & (data$average<= 20)),]
+fair = data[((data$average>=10) & (data$average< 15)),]
+poor = data[((data$average>=0) & (data$average< 10)),]
+good$grade = c("GOOD")
+fair$grade = c("FAIR")
+poor$grade = c("POOR")
+grades = list(good,poor, fair)
+grades = (merge_recurse(grades))
+```
+
+```{r echo=F, fig.width=10, fig.height=7, fig.align="center"}
+a=ggplot(grades, aes(x = Medu, fill = grade)) +
+    geom_bar(position = 'dodge') +
+    labs(title = 'plot 1:Mother education vs grades', x = 'level', y = 'Count') +
+    theme_minimal()
+b=ggplot(grades, aes(x = Fedu, fill = grade)) +
+    geom_bar(position = 'dodge') +
+    labs(title = 'plot 2:Father education vs grades', x = 'level', y = 'Count') +
+    theme_minimal()
+c=ggplot(grades, aes(x = Mjob, fill = grade)) +
+    geom_bar(position = 'dodge') +
+    labs(title = 'plot 3:Mother job vs grades', x = 'job', y = 'Count') +
+    theme_minimal()
+d=ggplot(grades, aes(x = Fjob, fill = grade)) +
+    geom_bar(position = 'dodge') +
+    labs(title = 'plot 4:Father job vs grades', x = 'job', y = 'Count') +
+    theme_minimal()
+e=ggplot(grades, aes(x = famsize, fill = grade)) +
+    geom_bar(position = 'dodge') +
+    labs(title = 'plot 5:Family size vs grades', x = 'size', y = 'Count') +
+    theme_minimal()
+f=ggplot(grades, aes(x = Pstatus, fill = grade)) +
+    geom_bar(position = 'dodge') +
+    labs(title = 'plot 6:Parental status vs grades', x = 'status', y = 'Count') +
+    theme_minimal()
+grid.arrange(a,b,c,d,e,f,ncol=2)
+```
+
+
+
+test if there is any activity that reflect performance
+
+
+```{r echo=F, fig.width=10, fig.height=9, fig.align="center"}
+a=ggplot(grades, aes(x=traveltime, fill= grade))+ 
+		geom_bar(position = 'dodge') +
+		labs(title = 'plot 1:travel time vs grade', x = 'time')
+b=ggplot(grades, aes(x=freetime, fill= grade))+ 
+		geom_bar(position = 'dodge') +
+		labs(title = 'plot 2:free time vs grade', x = 'time')
+c=ggplot(grades, aes(x=goout, fill= grade))+ 
+		geom_bar(position = 'dodge') +
+		labs(title = 'plot 3:go out vs grade', x = 'rate')
+d=ggplot(grades, aes(x=studytime, fill= grade))+ 
+		geom_bar(position = 'dodge') +
+		labs(title = 'plot 4:study time vs grade', x = 'time')
+e=ggplot(grades, aes(x=Walc, fill= grade))+ 
+		geom_bar(position = 'dodge') +
+		labs(title = 'plot 5:weakely alcohol vs grade', x = 'rate')
+f=ggplot(grades, aes(x=health, fill= grade))+ 
+		geom_bar(position = 'dodge') +
+		labs(title = 'plot 6:health vs grade', x = 'rate')
+g=ggplot(grades, aes(x=absences, y=average))+ 
+		geom_point() +
+		labs(title = 'absence vs grade', x = 'absences')
+h=ggplot(grades, aes(x=support, fill= grade))+ 
+		geom_bar(position = 'dodge') +
+		labs(title = 'support type vs grade', x = 'support type')
+
+grid.arrange(a,b,c,d,e,f,g,h,ncol=2)
+```
+
+
+
+
+```{r}
+par(mfrow=c(2, 2))
+plot(data$G1,data$G2,xlab="G1",ylab="G2",main="G1 VS G2")
+plot(data$G1,data$G3,xlab="G1",ylab="G3",main="G1 VS G3")
+plot(data$G2,data$G3,xlab="G2",ylab="G3",main="G2 VS G3")
+```
+
+
+
+
+```{r}
+num_data = data[,numeric_var]
+correlation2 = cor(num_data, method = 'spearman')
+corrplot(correlation2, method="number",tl.cex=0.7,number.cex=0.7)
+```
+```{r}
+plot_list=list()
+variables=c("traveltime", "freetime", "goout", "studytime", "Walc", "health", "absences", "support")
+for (var in variables) {
+  plot=ggplot(grades, aes_string(x = var, fill = "grade")) +
+    geom_bar(position = 'dodge') +
+    labs(title = paste("Plot:", var, "vs grade"), x = var)
+  plot_list[[length(plot_list) + 1]] <- plot
+}
+scatter_plot=ggplot(grades, aes(x = absences, y = average)) +
+  geom_point() +
+  labs(title = 'Absence vs Grade', x = 'Absences')
+plot_list[[length(plot_list) + 1]]=scatter_plot
+grid.arrange(grobs = plot_list, ncol = 2)
+```
+
+```{r}
+alcohol_data <- gather(data, key = "day_type", value = "consumption", Dalc, Walc)
+count_data <- table(alcohol_data$day_type, alcohol_data$consumption)
+
+# Convert the count data to a data frame for plotting
+count_df <- as.data.frame(count_data)
+colnames(count_df) <- c("day_type", "consumption", "count")
+
+# Bar plot for the count of people with different levels of consumption
+ggplot(count_df, aes(x = interaction(consumption, day_type), y = count, fill = as.factor(consumption))) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Count of People with Different Levels of Consumption",
+       x = "Day Type and Consumption Level",
+       y = "Count") +
+  scale_fill_manual(values = c("lightblue", "lightgreen", "yellow", "orange", "red")) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+

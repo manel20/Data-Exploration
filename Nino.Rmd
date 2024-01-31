@@ -1,0 +1,120 @@
+---
+title: "project"
+output:
+  word_document: default
+  html_document: default
+date: "2023-12-01"
+---
+```{r}
+rm(list=ls())
+```
+```{r}
+library(ggplot2)
+require(GGally)
+library(gridExtra)
+library(reshape)
+library(corrplot)
+```
+
+
+
+```{r}
+data_col= read.table('tao-all2.col', sep=",")
+nino= read.table('tao-all2.dat', header= FALSE,na.strings = ".")
+```
+
+```{r}
+colnames(nino) = data_col$V1
+```
+
+```{r}
+str(nino)
+```
+```{r}
+summary(nino)
+nrow(nino)
+```
+```{r}
+nino$longitude = nino$longitude %% 360
+
+# Hemisphere
+nino$hemisphere <- nino$latitude < 0.0
+nino$hemisphere <- ifelse(nino$hemisphere, 'South', 'North')
+
+nino$date = as.Date(as.character(nino$date), format="%y %m %d")
+```
+
+
+Let's remove the Humidity column and, for now, remove the NaN rows. of SST and Air Temp.
+
+
+```{r}
+data=nino[, !(names(nino) %in% c('humidity'))]
+# Remove rows with NA values in 'Air Temp' or 'Sea Surface Temp'
+data=data[complete.cases(data$`air temp.`, data$s.s.temp.,data$zon.winds,data$mer.winds),]
+#cleaning the wrapped longitude variable
+summary(data)
+nrow(data)
+```
+
+
+```{r}
+ggplot(data, aes(x = year)) +
+  geom_histogram(binwidth = 1, fill = "skyblue", color = "white", alpha = 0.7) +
+  labs(title = 'number of Observation per year') +
+  theme_minimal()
+```
+
+
+
+```{r}
+correlation=cor(subset(data,select = -c(date, hemisphere)),use = "complete.obs")
+corrplot(correlation, method="number")
+```
+
+
+
+```{r}
+a=ggplot(data,aes(x=`air temp.`,y=s.s.temp.,colour = hemisphere)) + geom_point(position = position_dodge(width = 0.4)) +xlab("Air.Temp") +
+  ylab("sea surface temp") +
+  ggtitle("plot 1 of Air.Temp vs sea surface temperature")
+b=ggplot(data,aes(x=longitude,y=s.s.temp.)) + geom_point(position = position_dodge(width = 0.4)) +xlab("logitude") +
+  ylab("sea surface temp") +
+  ggtitle("plot 2 of longitude vs sea surface temperature")
+c=ggplot(data,aes(x=longitude,y=`air temp.`)) + geom_point(position = position_dodge(width = 0.4)) +xlab("logitude") +
+  ylab("air temp") +
+  ggtitle("plot 3 of longitude vs air temperature")
+grid.arrange(a, b,c, ncol=2)
+```
+
+```{r}
+a=ggplot(data,aes(zon.winds,y=s.s.temp. ,colour = hemisphere)) + geom_point(position = position_dodge(width = 0.4)) +xlab("zonal winds") +
+  ylab("sea surface temp") +
+  ggtitle("sea surface temperature vs longitude")
+b=ggplot(data,aes(x=longitude,y=data$zon.winds ,colour = hemisphere)) + geom_point(position = position_dodge(width = 0.4)) +xlab("longitude") +
+  ylab("zon winds") +
+  ggtitle("air temperature vs longitude")
+grid.arrange(a, b, ncol=2)
+```
+```{r}
+nino94=nino[nino$year==94,]
+nino94$time <- nino94$month + nino94$day/30
+```
+
+```{r}
+
+#time series plot
+par(mfcol=c(2,2),mar=c(4,4,2,1))
+
+plot(nino94$time, nino94$`air temp.` ,type="l",lty=2, xlab="Time",ylab="Air temp",col="red")
+plot(nino94$time, nino94$s.s.temp. ,type="l",lty=2, xlab="Time",ylab="Sea surface temp",col="orange")
+plot(nino94$time, nino94$humidity ,type="l",lty=2, xlab="Time",ylab="Humidity",col="yellow")
+plot(nino94$time, nino94$zon.winds ,type="l",lty=2, xlab="Time",ylab="Zonal wind",col="blue")
+
+```
+
+
+```{r}
+sum(nino$year==94)
+```
+

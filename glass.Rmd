@@ -1,0 +1,98 @@
+---
+title: "glass"
+output:
+  word_document: default
+  pdf_document: default
+date: "2023-12-28"
+---
+```{r}
+library(ggplot2)
+library(GGally)
+library(reshape2)
+library(corrplot)
+library(gridExtra)
+```
+
+**1.Read data and clean**
+```{r}
+data=read.table("C:/Users/Thinkpad/Desktop/data anal/project databases/glass identification/glass.data", sep=",")
+names=c("Id_number","RI","Na","Mg","Al","Si","K","Ca","Ba","Fe","Type")
+colnames(data)=names
+write.csv(data, "glass.csv")
+data=subset(data, select = c(-1) )
+```
+
+```{r}
+str(data)
+```
+```{r}
+summary(data)
+```
+data normalization: 
+
+```{r}
+out <- boxplot(data$RI, range = 2,main="out")$out
+out_ind <- which(data$RI %in% c(out))
+out_ind
+
+data[out_ind, ]
+data1<- data[-which(data$RI %in% c(out)),]
+boxplot(data1,main="data1")
+
+min_max_norm <- function(x) {
+    (x - min(x)) / (max(x) - min(x))
+}
+data_norm <- as.data.frame(lapply(data1[1:9], min_max_norm))
+data_norm$Type =data1$Type
+```
+
+
+```{r}
+summary(data_norm)
+nrow(data_norm)
+```
+```{r}
+table=data.frame(type=c(1,2,3,4,5,6,7),count=c(70,76,17,0,13,9,29))
+barplot(table$count, names.arg = table$type, col = 'skyblue', 
+        main = 'Bar Plot of Glass Type Counts', xlab = 'Glasse Type', ylab = 'Count')
+
+```
+```{r}
+
+E2 = cor(data_norm, method = 'spearman')
+corrplot(E2, method="number")
+```
+
+
+**2. Multivariate relations**
+```{r}
+ggpairs(data_norm)
+```
+so most correlated attributes are: Ri with Ca, Ri with Si, Na with Ba, Mg with Al, Mg with Ba, Al with Ba 
+
+```{r}
+plot1<-ggplot(data,aes(x = Ca, y = RI)) + geom_point() +geom_smooth(method = "lm")
+plot2<-ggplot(data,aes(x = Si, y = RI)) + geom_point() +geom_smooth(method = "lm")
+grid.arrange(plot1, plot2, ncol=2)
+```
+
+```{r}
+model = lm(Type~.*., data = data)
+smodel = step(model, trace = FALSE)
+summary(smodel)
+```
+
+```{r}
+par(mfrow =c(2,2))
+plot(smodel)
+```
+
+```{r}
+ggplot(data,aes(x = Type, y = Ba)) + geom_point()
+ggplot(data,aes(x = Type, y = Al)) + geom_point()
+```
+
+
+
+
+

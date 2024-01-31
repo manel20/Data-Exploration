@@ -1,0 +1,165 @@
+---
+title: "Untitled"
+author: "forest"
+date: "2024-01-07"
+output:
+  word_document: default
+  pdf_document: default
+---
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(GGally)
+library(magrittr)
+library(reshape2)
+library(gridExtra)
+```
+
+
+```{r}
+lines= readLines("Algerian_forest_fires_dataset_UPDATE.csv")
+lines <- lines[-c(1,125,126,127)]
+data=read.csv(text=lines)
+data$region=character(244)
+data$region[1:122]="Bejaia"
+data$region[123:244]="Sidi-Bel Abbes"
+str(data)
+```
+
+```{r}
+summary(data)
+```
+1. Clean data
+
+```{r}
+## Remove extra whitespaces from variables name row
+names(data) <- str_trim(names(data))
+## Remove extra space from each value in the 'Classes' variable
+data$Classes <- str_trim(data$Classes)
+      
+  ## Convert variables to appropriate data types
+data$DC <- as.numeric(data$DC)
+data$FWI <- as.numeric(data$FWI)
+  
+data$Classes <- as.factor(data$Classes)
+data$region <- as.factor(data$region)
+  
+summary(data)
+```
+```{r}
+## Check for missing values
+na_count <- colSums(is.na(data))
+print(na_count) # 1 in DC 1 in FWI
+      
+  ## Remove rows with NA values in any column
+data <- na.omit(data)
+      
+```
+
+```{r}
+# Distribution of attributes
+  # Loop through each attribute and create individual plots
+par(mfrow=c(4, 3),mar=c(3.8, 2, 1, 1) ,oma=c(0, 0, 2, 0))
+for (col in names(data[,-c(1,2,3,15)])) {
+    # Check if the column contains numeric data
+    if (is.numeric(data[[col]])) {
+      # For numeric columns, create a histogram
+      hist(data[[col]], main = paste("Distribution of", col), xlab = col, col = "lightblue", border = "black")
+    } else {
+      # For categorical columns, create a bar plot
+      barplot(table(data[[col]]), main = paste("Distribution of", col), xlab = col, col = "lightblue", border = "black")
+    }
+  }
+```
+```{r}
+  numeric_vars <- c('Temperature', 'RH', 'Ws', 'Rain', 'FFMC', 'DMC', 'DC', 'ISI', 'BUI', 'FWI')
+  
+  # Loop through each numeric variable and create scatter plots
+  for (var in numeric_vars) {
+    print(ggplot(data, aes(x = factor(month), y = !!sym(var))) +
+      geom_point(aes(color = Classes,shape=region)) +
+      labs(title = paste("Relationship Between Month and", var),
+           x = "Month", y = var) +
+      theme_minimal() +
+      theme(legend.position = "top"))
+    
+}
+```
+
+
+
+
+```{r}
+  # Month vs classes
+  ggplot(data, aes(x = factor(month), fill = Classes)) +
+    geom_bar(position = 'dodge') +
+    labs(title = 'Month vs Classes', x = 'Month', y = 'Count') +
+    theme_minimal()
+```
+
+
+```{r}
+# Distribution of FWI vs other attributes
+  attributes <- c("Temperature", "RH", "Ws", "Rain", "FFMC", "DMC", "DC", "ISI", "BUI","FWI")
+  
+  # Loop through each numeric variable and create scatter plots
+  for (var in attributes) {
+    print(ggplot(data, aes(x = FWI, y = !!sym(var))) +
+      geom_point(alpha = 0.5) +
+      labs(title = paste("Relationship Between FWI and", var),
+           x = "FWI", y = var) +
+      theme_minimal())
+    
+  }
+```
+
+```{r}
+ggpairs(data,columns = attributes,
+  title = "Pairs Plot",
+)
+```
+
+```{r}
+plot(data$Temperature,)
+```
+
+
+
+
+```{r}
+correlation_matrix <- cor(data[, -c(1,2,3,14, 15)])
+correlation_melted <- melt(correlation_matrix)
+ggplot(correlation_melted, aes(Var1, Var2, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = "green", high = "red") +
+  theme_minimal() +
+  labs(title = "Correlation Heatmap")
+
+```
+```{r}
+correlation_matrix
+```
+
+```{r}
+data$time= data$month + data$day/30
+#time series plot
+par(mfcol=c(3,3),mar=c(4,4,1,1))
+attributes <- c("Temperature", "RH", "Ws", "Rain", "FFMC", "DMC", "DC", "ISI", "BUI","FWI")
+  for (var in attributes) {
+    plot(data$time, data[[var]] ,type="l",lty=2, xlab="Time",ylab=var)
+    }
+
+```
+
+```{r}
+par(mfcol=c(3,3),mar=c(4,4,1,1))
+attributes <- c("Temperature", "RH", "Ws", "Rain", "FFMC", "DMC", "DC", "ISI", "BUI","FWI")
+  # Loop through each numeric variable and create scatter plots
+  for (var in attributes) {
+    plot(data$time, data[[var]] ,type="l",lty=2, xlab="Time",ylab=var)
+    
+  }
+```
+
